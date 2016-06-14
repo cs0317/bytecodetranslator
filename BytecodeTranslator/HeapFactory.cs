@@ -275,6 +275,9 @@ namespace BytecodeTranslator {
 
     #endregion
 
+    [RepresentationFor("boogie_si_record_Ref", "procedure {:inline 1} boogie_si_record_Ref(r: Ref);")]
+    public Bpl.Procedure RecordRef = null;
+
     /// <summary>
     /// Creates a fresh BPL variable to represent <paramref name="type"/>, deciding
     /// on its type based on the heap representation. I.e., the value of this

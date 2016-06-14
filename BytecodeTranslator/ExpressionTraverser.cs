@@ -572,19 +572,31 @@ namespace BytecodeTranslator
     /// <param name="methodCall"></param>
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void TraverseChildren(IMethodCall methodCall) {
+      var qualifiedMethodName = MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None);
       var resolvedMethod = ResolveUnspecializedMethodOrThrow(methodCall.MethodToCall);
 
       Bpl.IToken methodCallToken = methodCall.Token();
 
       if (this.sink.Options.getMeHere) {
         // TODO: Get a method reference so this isn't a string comparison?
-        var methodName = MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None);
-        if (methodName.Equals("GetMeHere.GetMeHere.Assert")) {
+        if (qualifiedMethodName.Equals("GetMeHere.GetMeHere.Assert")) {
           // for now, just translate it as "assert e"
           this.Traverse(methodCall.Arguments.First());
           Bpl.Expr e = this.TranslatedExpressions.Pop();
           this.StmtTraverser.StmtBuilder.Add(new Bpl.AssertCmd(methodCallToken, e));
           return;
+        }
+      }
+
+      if (qualifiedMethodName.Equals("Corral.Log"))
+      {
+        if (TranslateCorralLog(methodCall, methodCallToken))
+        {
+          return;
+        }
+        else
+        {
+          Console.WriteLine("Ignoring invalid call to Corral.Log.");  // TODO: location?
         }
       }
 
@@ -985,6 +997,28 @@ namespace BytecodeTranslator
       return procInfo.Decl;
     }
 
+    private bool TranslateCorralLog(IMethodCall methodCall, Bpl.IToken methodCallToken)
+    {
+      IExpression[] args = methodCall.Arguments.ToArray();
+      if (args.Length != 2) return false;
+      var labelArg = args[0] as ICompileTimeConstant;
+      if (labelArg == null) return false;
+      var label = labelArg.Value as string;
+      if (label == null) return false;
+
+      IExpression valueArg = args[1];
+      this.Traverse(valueArg);
+      Bpl.Expr valueBpl = this.TranslatedExpressions.Pop();
+      EmitLineDirective(methodCallToken);
+      var call = new Bpl.CallCmd(methodCallToken, "boogie_si_record_Ref", new List<Bpl.Expr> { valueBpl }, new List<Bpl.IdentifierExpr> { });
+      // This seems to be the idiom (see Bpl.Program.addUniqueCallAttr).
+      // XXX What does the token mean?  Should there be one?
+      // ~ Matt 2016-06-13
+      call.Attributes = new Bpl.QKeyValue(Bpl.Token.NoToken, "cexpr", new List<object> { label }, call.Attributes);
+      this.StmtTraverser.StmtBuilder.Add(call);
+
+      return true;
+    }
     #endregion
 
     #region Translate Assignments
