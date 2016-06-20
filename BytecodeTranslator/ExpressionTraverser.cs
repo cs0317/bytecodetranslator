@@ -572,8 +572,9 @@ namespace BytecodeTranslator
     /// <param name="methodCall"></param>
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void TraverseChildren(IMethodCall methodCall) {
-      var qualifiedMethodName = MemberHelper.GetMethodSignature(methodCall.MethodToCall, NameFormattingOptions.None);
       var resolvedMethod = ResolveUnspecializedMethodOrThrow(methodCall.MethodToCall);
+      // Corral.Log is generic, so it matters that we use the unspecialized method here.
+      var qualifiedMethodName = MemberHelper.GetMethodSignature(resolvedMethod, NameFormattingOptions.None);
 
       Bpl.IToken methodCallToken = methodCall.Token();
 
@@ -1009,8 +1010,9 @@ namespace BytecodeTranslator
       IExpression valueArg = args[1];
       this.Traverse(valueArg);
       Bpl.Expr valueBpl = this.TranslatedExpressions.Pop();
+      var logProcedureName = sink.FindOrCreateRecordProcedure(valueBpl.Type);
       EmitLineDirective(methodCallToken);
-      var call = new Bpl.CallCmd(methodCallToken, "boogie_si_record_Ref", new List<Bpl.Expr> { valueBpl }, new List<Bpl.IdentifierExpr> { });
+      var call = new Bpl.CallCmd(methodCallToken, logProcedureName, new List<Bpl.Expr> { valueBpl }, new List<Bpl.IdentifierExpr> { });
       // This seems to be the idiom (see Bpl.Program.addUniqueCallAttr).
       // XXX What does the token mean?  Should there be one?
       // ~ Matt 2016-06-13

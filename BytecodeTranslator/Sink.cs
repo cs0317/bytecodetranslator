@@ -1530,5 +1530,40 @@ namespace BytecodeTranslator {
     /// </summary>
     internal readonly Stack<Bpl.Expr> operandStack = new Stack<Bpl.Expr>();
 
+    private HashSet<string> typesWithRecordProcedure = new HashSet<string>();
+
+    // Boogie or Corral should have a method to do this for us *grumble*, or we
+    // could use boogie_si_record<T>(value: T), but introducing polymorphism
+    // into the BPL seems to break more things than it's worth.
+    // ~ t-mattmc@microsoft.com 2016-06-18
+    public string FindOrCreateRecordProcedure(Bpl.Type type)
+    {
+      // Compare types by name because we can get an UnresolvedType from
+      // "type Union = Ref". :/  Hopefully we don't get two different types with
+      // the same string representation; otherwise the generated code will be
+      // ill-typed.
+      string typeName = type.ToString();
+      // Otherwise we may need to encode the name more carefully.  Boogie allows
+      // more characters, but I don't want to list them all here and these
+      // should be enough.
+      Contract.Assume(Regex.IsMatch(typeName, "^[_A-Za-z0-9]*$"));
+      string procedureName = "boogie_si_record_" + typeName;
+      if (typesWithRecordProcedure.Add(typeName))
+      {
+        // C.f. https://github.com/boogie-org/corral/blob/e20a0704670b54ea0c17da9182f4ebf6be7cb543/source/CoreLib/VerificationPasses.cs#L183
+        this.TranslatedProgram.AddTopLevelDeclaration(
+          new Bpl.Procedure(
+            Bpl.Token.NoToken,
+            procedureName,
+            new List<Bpl.TypeVariable>(),
+            new List<Bpl.Variable> { new Bpl.Formal(Bpl.Token.NoToken, new Bpl.TypedIdent(Bpl.Token.NoToken, "value", type), false) },
+            new List<Bpl.Variable>(),
+            new List<Bpl.Requires>(),
+            new List<Bpl.IdentifierExpr>(),
+            new List<Bpl.Ensures>())
+            );
+      }
+      return procedureName;
+    }
   }
 }
