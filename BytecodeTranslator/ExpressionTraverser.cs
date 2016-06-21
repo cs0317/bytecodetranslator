@@ -1010,12 +1010,16 @@ namespace BytecodeTranslator
       IExpression valueArg = args[1];
       this.Traverse(valueArg);
       Bpl.Expr valueBpl = this.TranslatedExpressions.Pop();
-      var logProcedureName = sink.FindOrCreateRecordProcedure(valueBpl.Type);
+      // valueBpl.Type only gets set in a few simple cases, while
+      // sink.CciTypeToBoogie(valueArg.Type.ResolvedType) should always be
+      // correct if BCT is working properly. *cross fingers*
+      // ~ t-mattmc@microsoft.com 2016-06-21
+      var logProcedureName = sink.FindOrCreateRecordProcedure(sink.CciTypeToBoogie(valueArg.Type.ResolvedType));
       EmitLineDirective(methodCallToken);
       var call = new Bpl.CallCmd(methodCallToken, logProcedureName, new List<Bpl.Expr> { valueBpl }, new List<Bpl.IdentifierExpr> { });
       // This seems to be the idiom (see Bpl.Program.addUniqueCallAttr).
       // XXX What does the token mean?  Should there be one?
-      // ~ Matt 2016-06-13
+      // ~ t-mattmc@microsoft.com 2016-06-13
       call.Attributes = new Bpl.QKeyValue(Bpl.Token.NoToken, "cexpr", new List<object> { label }, call.Attributes);
       this.StmtTraverser.StmtBuilder.Add(call);
 
