@@ -573,7 +573,7 @@ namespace BytecodeTranslator
     /// <remarks>Stub, This one really needs comments!</remarks>
     public override void TraverseChildren(IMethodCall methodCall) {
       var resolvedMethod = ResolveUnspecializedMethodOrThrow(methodCall.MethodToCall);
-      // Corral.Log is generic, so it matters that we use the unspecialized method here.
+      // BCTDiagnostics.Record is generic, so it matters that we use the unspecialized method here.
       var qualifiedMethodName = MemberHelper.GetMethodSignature(resolvedMethod, NameFormattingOptions.None);
 
       Bpl.IToken methodCallToken = methodCall.Token();
@@ -589,15 +589,15 @@ namespace BytecodeTranslator
         }
       }
 
-      if (qualifiedMethodName.Equals("Corral.Log"))
+      if (qualifiedMethodName.Equals("BytecodeTranslator.Diagnostics.BCTDiagnostics.Record"))
       {
-        if (TranslateCorralLog(methodCall, methodCallToken))
+        if (TranslateRecordCall(methodCall, methodCallToken))
         {
           return;
         }
         else
         {
-          Console.WriteLine("Ignoring invalid call to Corral.Log.");  // TODO: location?
+          Console.WriteLine("Ignoring invalid call to BCTDiagnostics.Record.");  // TODO: location?
         }
       }
 
@@ -998,7 +998,7 @@ namespace BytecodeTranslator
       return procInfo.Decl;
     }
 
-    private bool TranslateCorralLog(IMethodCall methodCall, Bpl.IToken methodCallToken)
+    private bool TranslateRecordCall(IMethodCall methodCall, Bpl.IToken methodCallToken)
     {
       IExpression[] args = methodCall.Arguments.ToArray();
       if (args.Length != 2) return false;
